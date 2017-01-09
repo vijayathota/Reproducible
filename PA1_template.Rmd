@@ -1,0 +1,95 @@
+---
+title: "Reproducible-Assignment"
+author: "Vijay Thota"
+date: "January 9, 2017"
+output: html_document
+---
+
+This is an assingmnet for producible resource week2 course.Used personal movement data to answer the questions in this assignment. 
+
+Data: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip
+
+
+###1 .Code for reading in the dataset and/or processing the data###
+
+```{r reading data, results= 'hide', message=FALSE, warning= FALSE}
+setwd("C:/Users/185384/Documents/Personal/Self Learning/R/Markdown/Assignment")
+activity <- read.table(file = "activity.csv", sep="," , stringsAsFactors = FALSE,header = TRUE)
+library(dplyr)
+activity <- mutate(activity, date = as.Date(date,"%Y-%m-%d"))
+```
+Activity data has been loaded into R, data was converted from char to data class.
+
+###2 . Histogram of the total number of steps taken each day###
+
+```{r}
+steps4day <- aggregate(steps ~ date , data = activity, FUN = "sum")
+barplot(steps4day$steps, names.arg = steps4day$date, xlab = "Date" , ylab = "Steps per day", main = "Number of Steps per Day")
+```
+
+###3. Mean and median number of steps taken each day###
+```{r}
+mean(steps4day$steps, na.rm = TRUE)
+median(steps4day$steps, na.rm = TRUE)
+```
+###4. Time series plot of the average number of steps taken###
+```{r}
+mean4day_ts <- do.call("rbind", lapply(split(activity, activity$date), function(x) mean(x$steps, na.rm = TRUE)))
+mean4day_ts <- cbind(rownames(mean4day_ts),mean4day_ts[,1])
+mean4day_ts <- as.data.frame(mean4day_ts, stringsAsFactors= FALSE)
+names(mean4day_ts) <- c("date", "meansteps")
+mean4day_ts <- transform(mean4day_ts, date = as.Date(date,'%Y-%m-%d'), meansteps = as.numeric(meansteps))
+plot(mean4day_ts$date,mean4day_ts$meansteps, type = "b", main = "Time Series plot")
+```
+###5. The 5-minute interval that, on average, contains the maximum number of steps###
+```{r}
+mean4step <- do.call("rbind", lapply(split(activity, activity$interval), function(x) mean(x$steps, na.rm = TRUE)))
+mean4step <- cbind(rownames(mean4step),mean4step[,1])
+mean4step <- as.data.frame(mean4step,stringsAsFactors= FALSE)
+names(mean4step) <- c("Interval", "meansteps")
+mean4step <- transform(mean4step,meansteps = as.numeric(mean4step$meansteps) )
+mean4step <- mean4step[rev(order(mean4step$meansteps)),]
+barplot(mean4step$meansteps, names.arg = mean4step$Interval, xlab = "interval" , ylab = "Number of steps", main = "Average steps taken for each interval")
+```
+###6. Code to describe and show a strategy for imputing missing data
+
+Number of NA values in each column of the data set
+```{r message=FALSE, warning= FALSE}
+library(mice)
+md.pattern(activity)
+```
+Used Hmisc package to replace NA values with mean values.
+```{r message=FALSE, warning= FALSE}
+library(Hmisc)
+activity$newsteps <- with(activity, impute(steps, mean))
+```
+
+###7. Histogram of the total number of steps taken each day after missing values are imputed###
+```{r}
+NAsteps4day <- aggregate(newsteps ~ date , data = activity, FUN = "sum")
+barplot(NAsteps4day$newsteps, names.arg = NAsteps4day$date, xlab = "Date" , ylab = "Steps per day", main = "Number of Steps per Day After NA treatment")
+```
+
+### 8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends###
+```{r}
+activity <- mutate(activity, week_day = weekdays(date))
+weekend_activity <- filter(activity, week_day == c("Sunday","Saturday"))
+weekday_activity <- filter(activity, week_day != c("Sunday","Saturday"))
+mean4step_weekend <- do.call("rbind", lapply(split(weekend_activity, weekend_activity$interval), function(x) mean(x$steps, na.rm = TRUE)))
+mean4step_weekday <- do.call("rbind", lapply(split(weekday_activity, weekday_activity$interval), function(x) mean(x$steps, na.rm = TRUE)))
+mean4step_weekend <- cbind(rownames(mean4step_weekend),mean4step_weekend[,1])
+mean4step_weekday <- cbind(rownames(mean4step_weekday),mean4step_weekday[,1])
+mean4step_weekend <- as.data.frame(mean4step_weekend,stringsAsFactors= FALSE)
+mean4step_weekday <- as.data.frame(mean4step_weekday,stringsAsFactors= FALSE)
+names(mean4step_weekend) <- c("Interval", "meansteps")
+names(mean4step_weekday) <- c("Interval", "meansteps")
+mean4step_weekend <- transform(mean4step_weekend,meansteps = as.numeric(mean4step_weekend$meansteps) )
+mean4step_weekday <- transform(mean4step_weekday,meansteps = as.numeric(mean4step_weekday$meansteps) )
+par(mfrow= c(2,1))
+barplot(mean4step_weekend$meansteps, names.arg = mean4step_weekend$Interval, xlab = "interval" , ylab = "Number of steps", main = "Weekend- Average steps taken for each interval")
+barplot(mean4step_weekday$meansteps, names.arg = mean4step_weekday$Interval, xlab = "interval" , ylab = "Number of steps", main = "Weekday- Average steps taken for each interval")
+```
+
+
+
+
